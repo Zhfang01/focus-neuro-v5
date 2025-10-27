@@ -389,124 +389,102 @@ with tab2:
 
 
 # ================== 🍽️ 轻断食追踪（16:8 模式） ==================
-st.subheader("🍽️ 轻断食打卡（16:8 模式）")
+# ================== 🍎 轻断食纪律追踪（含手动输入 + 热力格） ==================
+st.subheader("🍎 轻断食打卡与热力格（16:8 Discipline Tracker）")
 
 FASTING_FILE = "fasting_log.csv"
 FASTING_LIMIT_HOURS = 8
 
+# ---------- 初始化文件 ----------
 if not os.path.exists(FASTING_FILE):
     pd.DataFrame(columns=["date", "start_eat", "end_eat", "duration_hr"]).to_csv(FASTING_FILE, index=False)
 
+# ---------- 读取数据 ----------
 fast_df = pd.read_csv(FASTING_FILE)
-fast_df["date"] = pd.to_datetime(fast_df["date"]).dt.date
-
-# --- 打卡功能 ---
-c1, c2 = st.columns(2)
-with c1:
-    if st.button("🍳 记录第一餐时间（Start Eating）"):
-        now = datetime.now()
-        today_row = fast_df[fast_df["date"] == today]
-        if not today_row.empty and pd.notna(today_row.iloc[0]["start_eat"]):
-            st.warning("今天已经记录过开始时间了。")
-        else:
-            new_row = pd.DataFrame([[today, now, None, None]],
-                                   columns=["date", "start_eat", "end_eat", "duration_hr"])
-            fast_df = pd.concat([fast_df[fast_df["date"] != today], new_row], ignore_index=True)
-            fast_df.to_csv(FASTING_FILE, index=False)
-            st.success(f"✅ 已记录开始进食时间：{now.strftime('%H:%M')}")
-
-with c2:
-    if st.button("🥦 记录最后一餐时间（Stop Eating）"):
-        now = datetime.now()
-        today_row = fast_df[fast_df["date"] == today]
-        if today_row.empty or pd.isna(today_row.iloc[0]["start_eat"]):
-            st.warning("请先记录开始时间。")
-        else:
-            start_time = pd.to_datetime(today_row.iloc[0]["start_eat"])
-            dur_hr = (now - start_time).total_seconds() / 3600
-            fast_df.loc[fast_df["date"] == today, ["end_eat", "duration_hr"]] = [now, dur_hr]
-            fast_df.to_csv(FASTING_FILE, index=False)
-            if dur_hr <= FASTING_LIMIT_HOURS:
-                st.success(f"🌿 今日进食窗口 {dur_hr:.1f} 小时 ✅ 成功！")
-            else:
-                st.error(f"⚠️ 今日进食窗口 {dur_hr:.1f} 小时 ❌ 超出 8 小时")
-
-# ================== 🍎 轻断食纪律热力格 ==================
-st.subheader("🍎 轻断食热力格（16:8 Discipline Tracker）")
-
-FASTING_FILE = "fasting_log.csv"
-FASTING_LIMIT_HOURS = 8
-
-if os.path.exists(FASTING_FILE):
-    fast_df = pd.read_csv(FASTING_FILE)
-    if not fast_df.empty:
-        fast_df["date"] = pd.to_datetime(fast_df["date"]).dt.date
-        fast_df["status"] = fast_df["duration_hr"].apply(
-            lambda x: 1 if pd.notna(x) and x <= FASTING_LIMIT_HOURS else
-                      (0 if pd.notna(x) and x > FASTING_LIMIT_HOURS else np.nan)
-        )
-
-        # 补全年所有日期
-        start_of_year = date(today.year, 1, 1)
-        end_of_year = date(today.year, 12, 31)
-        all_days = pd.date_range(start_of_year, end_of_year, freq="D")
-        merged = pd.DataFrame({"date": all_days})
-        merged["date"] = pd.to_datetime(merged["date"]).dt.date
-
-        # 合并断食结果
-        merged = merged.merge(fast_df[["date", "status"]], on="date", how="left")
-
-        # ISO 周、周几（用于热力格布局）
-        merged["iso_week"] = pd.to_datetime(merged["date"]).dt.isocalendar().week.astype(int)
-        merged["dow"] = pd.to_datetime(merged["date"]).dt.weekday
-
-        # 颜色编码：绿=成功，红=失败，灰=未记录
-        def color_code(x):
-            if x == 1: return "#a8e6cf"  # 成功绿
-            elif x == 0: return "#ff8b94"  # 失败红
-            else: return "#e9e9e9"  # 未打卡灰
-        merged["color"] = merged["status"].apply(color_code)
-
-        # pivot 格式化
-        pivot = merged.pivot(index="dow", columns="iso_week", values="status")
-        color_matrix = merged.pivot(index="dow", columns="iso_week", values="color")
-
-        # 绘图
-        z = pivot.fillna(-1).values  # 用-1代表灰色
-        color_scale = [[0.0, "#ff8b94"], [0.5, "#e9e9e9"], [1.0, "#a8e6cf"]]
-
-        fig_fasting = go.Figure(data=go.Heatmap(
-            z=z,
-            x=pivot.columns,
-            y=["Mon","Tue","Wed","Thu","Fri","Sat","Sun"],
-            colorscale=color_scale,
-            showscale=False,
-            hovertemplate="%{x}周, %{y}<extra></extra>"
-        ))
-        fig_fasting.update_layout(
-            title=f"{today.year} 年 16:8 轻断食纪律热力格",
-            paper_bgcolor="#f6faf5",
-            plot_bgcolor="#f6faf5",
-            xaxis=dict(showgrid=False, tickmode="linear"),
-            yaxis=dict(showgrid=False),
-            height=220,
-            margin=dict(l=0, r=0, t=50, b=0)
-        )
-        st.plotly_chart(fig_fasting, use_container_width=True)
-
-        # 成功率统计
-        total_days = merged["status"].notna().sum()
-        success_days = (merged["status"] == 1).sum()
-        if total_days > 0:
-            rate = success_days / total_days * 100
-            st.markdown(f"本年打卡天数：**{total_days}** ｜ 成功：**{success_days}** 天（{rate:.1f}%）")
-        else:
-            st.info("暂无断食数据，先开始记录吧 🍽️")
-
-    else:
-        st.info("还没有断食记录，去打卡区开始记录你的第一天吧 🍎")
+if not fast_df.empty:
+    fast_df["date"] = pd.to_datetime(fast_df["date"]).dt.date
 else:
-    st.info("未检测到 fasting_log.csv，请先在上方断食打卡区使用一次。")
+    fast_df = pd.DataFrame(columns=["date", "start_eat", "end_eat", "duration_hr"])
+
+# ---------- 手动输入 ----------
+st.markdown("**手动填写今天的进食时间**")
+manual_date = st.date_input("📅 日期", today)
+start_time = st.time_input("🍳 第一餐时间", dtime(14, 0))
+end_time   = st.time_input("🥦 最后一餐时间", dtime(22, 0))
+
+if st.button("💾 保存记录"):
+    start_dt = datetime.combine(manual_date, start_time)
+    end_dt   = datetime.combine(manual_date, end_time)
+    dur_hr   = (end_dt - start_dt).total_seconds() / 3600
+    new_row = pd.DataFrame([[manual_date, start_dt, end_dt, dur_hr]],
+                           columns=["date","start_eat","end_eat","duration_hr"])
+
+    # 去重 + 覆盖同日
+    fast_df = pd.concat([fast_df[fast_df["date"] != manual_date], new_row], ignore_index=True)
+    fast_df.to_csv(FASTING_FILE, index=False)
+    if dur_hr <= FASTING_LIMIT_HOURS:
+        st.success(f"✅ 已保存！{manual_date} 进食 {dur_hr:.1f} 小时 —— 成功完成 16:8 🍏")
+    else:
+        st.error(f"⚠️ 已保存，但进食 {dur_hr:.1f} 小时 —— 超出 8 小时限制")
+
+# ---------- 构建热力格 ----------
+if not fast_df.empty:
+    # 聚合去重，取每天最后记录
+    fast_df = fast_df.sort_values("date").groupby("date", as_index=False).last()
+
+    # 成功与否标记
+    fast_df["status"] = fast_df["duration_hr"].apply(
+        lambda x: 1 if pd.notna(x) and x <= FASTING_LIMIT_HOURS else
+                  (0 if pd.notna(x) and x > FASTING_LIMIT_HOURS else np.nan)
+    )
+
+    # 补全年日期
+    start_of_year = date(today.year, 1, 1)
+    end_of_year = date(today.year, 12, 31)
+    all_days = pd.date_range(start_of_year, end_of_year, freq="D")
+    merged = pd.DataFrame({"date": all_days})
+    merged["date"] = pd.to_datetime(merged["date"]).dt.date
+    merged = merged.merge(fast_df[["date","status"]], on="date", how="left")
+
+    # ISO周 & 周几
+    merged["iso_week"] = pd.to_datetime(merged["date"]).dt.isocalendar().week.astype(int)
+    merged["dow"] = pd.to_datetime(merged["date"]).dt.weekday
+
+    # pivot 防止重复
+    merged = merged.drop_duplicates(subset=["date"])
+    pivot = merged.pivot(index="dow", columns="iso_week", values="status")
+
+    # 构造颜色：绿=成功，红=失败，灰=未打卡
+    z = pivot.fillna(-1).values
+    color_scale = [[0.0, "#ff8b94"], [0.5, "#e9e9e9"], [1.0, "#a8e6cf"]]
+
+    # ---------- 绘制 Plotly Heatmap ----------
+    fig = go.Figure(data=go.Heatmap(
+        z=z,
+        x=pivot.columns,
+        y=["Mon","Tue","Wed","Thu","Fri","Sat","Sun"],
+        colorscale=color_scale,
+        showscale=False,
+        hovertemplate="周%{x}, %{y}<extra></extra>"
+    ))
+    fig.update_layout(
+        title=f"{today.year} 年 16:8 轻断食热力格",
+        paper_bgcolor="#f6faf5",
+        plot_bgcolor="#f6faf5",
+        xaxis=dict(showgrid=False, tickmode="linear"),
+        yaxis=dict(showgrid=False),
+        height=220,
+        margin=dict(l=0, r=0, t=50, b=0)
+    )
+    st.plotly_chart(fig, use_container_width=True)
+
+    # 统计
+    total_days = merged["status"].notna().sum()
+    success_days = (merged["status"] == 1).sum()
+    rate = success_days / total_days * 100 if total_days > 0 else 0
+    st.markdown(f"📊 本年打卡天数：**{total_days}** ｜ 成功：**{success_days}** 天（{rate:.1f}%）")
+else:
+    st.info("暂无断食数据，先填写一条记录吧 🍎")
 
 # ================== 清空数据（谨慎） ==================
 st.markdown("---")
