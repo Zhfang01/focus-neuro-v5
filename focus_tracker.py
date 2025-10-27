@@ -6,6 +6,20 @@ import plotly.graph_objects as go
 from datetime import datetime, timedelta, date, time as dtime
 import os, random, time, webbrowser
 
+
+
+# --- 简易密码保护 ---
+st.session_state["authenticated"] = st.session_state.get("authenticated", False)
+
+if not st.session_state["authenticated"]:
+    pwd = st.text_input("请输入访问密码：", type="password")
+    if pwd == "2001":  # 你自己设的密码
+        st.session_state["authenticated"] = True
+        st.success("✅ 验证成功！")
+        st.experimental_rerun()
+    else:
+        st.stop()
+
 # ================== 基础设置 ==================
 st.set_page_config(page_title="Focus Tracker Neuro+ v5 🌿", layout="wide")
 DATA_FILE = "focus_log.csv"
