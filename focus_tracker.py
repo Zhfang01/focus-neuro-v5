@@ -396,8 +396,11 @@ FASTING_FILE = "fasting_log.csv"
 FASTING_LIMIT_HOURS = 8
 
 # ---------- 初始化文件 ----------
-if not os.path.exists(FASTING_FILE):
-    pd.DataFrame(columns=["date", "start_eat", "end_eat", "duration_hr"]).to_csv(FASTING_FILE, index=False)
+if os.path.exists(FASTING_FILE) and os.path.getsize(FASTING_FILE) > 0:
+    fast_df = pd.read_csv(FASTING_FILE)
+else:
+    fast_df = pd.DataFrame(columns=["date", "start_eat", "end_eat", "duration_hr"])
+
 
 # ---------- 读取数据 ----------
 fast_df = pd.read_csv(FASTING_FILE)
