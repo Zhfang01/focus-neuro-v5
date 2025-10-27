@@ -8,6 +8,13 @@ import os, random, time, webbrowser
 
 
 
+# ================== 基础设置 ==================
+st.set_page_config(page_title="Focus Tracker Neuro+ v5 🌿", layout="wide")
+DATA_FILE = "focus_log.csv"
+DAILY_GOAL_HOURS = 5
+WEEK_HOURS_RANGE = range(8, 24)  # 8:00 - 23:59 显示
+
+
 # --- 简易密码保护 ---
 st.session_state["authenticated"] = st.session_state.get("authenticated", False)
 
@@ -19,13 +26,6 @@ if not st.session_state["authenticated"]:
         st.experimental_rerun()
     else:
         st.stop()
-
-# ================== 基础设置 ==================
-st.set_page_config(page_title="Focus Tracker Neuro+ v5 🌿", layout="wide")
-DATA_FILE = "focus_log.csv"
-DAILY_GOAL_HOURS = 5
-WEEK_HOURS_RANGE = range(8, 24)  # 8:00 - 23:59 显示
-
 # ================== 主题样式（Calm 绿白） ==================
 st.markdown("""
 <style>
