@@ -20,12 +20,13 @@ st.session_state["authenticated"] = st.session_state.get("authenticated", False)
 
 if not st.session_state["authenticated"]:
     pwd = st.text_input("请输入访问密码：", type="password")
-    if pwd == "2001":  # 你自己设的密码
+    if pwd == "2001":
         st.session_state["authenticated"] = True
         st.success("✅ 验证成功！")
         st.rerun()
-    else:
-        st.rerun()
+    elif pwd != "":
+        st.error("❌ 密码错误，请重试。")
+    st.stop()  # ⛔️ 阻止页面继续加载
 
 # ================== 主题样式（Calm 绿白） ==================
 st.markdown("""
