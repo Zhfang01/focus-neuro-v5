@@ -23,9 +23,10 @@ if not st.session_state["authenticated"]:
     if pwd == "2001":  # 你自己设的密码
         st.session_state["authenticated"] = True
         st.success("✅ 验证成功！")
-        st.experimental_rerun()
+        st.rerun()
     else:
-        st.stop()
+        st.rerun()
+
 # ================== 主题样式（Calm 绿白） ==================
 st.markdown("""
 <style>
